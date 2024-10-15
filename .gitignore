@@ -1,0 +1,23 @@
+
+
+# ignore *.nii.gz
+*.nii.gz
+*.log
+*.vtp
+*.vti
+
+# ignore output folder everywhere
+output/
+export/
+
+# ignore work folders everywhere
+archive/
+dump/
+
+# ignore node_modules folder
+node_modules/
+
+# ignore npm debug log files
+npm-debug.log*
+
+*.code-workspace
