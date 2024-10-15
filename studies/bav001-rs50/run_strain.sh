@@ -61,11 +61,9 @@ run_types=("auto" "manual")
 for run_type in "${run_types[@]}"; do
   out_dir="$out_root/$run_type"
 
-  short_run_type=${run_type:0:1}
+  short_run_type=${run_type:0:1} # a for auto, m for manual, etc.
 
-  p_fn_seg_ref="./${p_seg_ref_base}_${short_run_type}.nii.gz"
-  p_fn_mesh_bnd="$out_dir/segref_bnd.vtk"
-  p_fn_mesh_med="$out_dir/segref_med.vtk"
+  p_fn_mesh_ref="$out_dir/mesh_ref.vtk"
 
   # if out_auto and out_manual exist, archive them by appending YYMMDD-HHMMSS to the folder name
   if [ -d $out_dir ]; then
@@ -75,13 +73,36 @@ for run_type in "${run_types[@]}"; do
   mkdir -p $out_dir
 
   echo
+  echo "--------------------------------------------------"
   echo "Running: $run_type "
+  echo "--------------------------------------------------"
+  echo
 
-  # STEP 1: CREATE LABEL MESH -------------------------------------------------
+
+  # STEP 1: MERGE ROOT LABELS -------------------------------------------------
+  echo "-- Merging Root Labels ..."
+
+  p_fn_seg_ref="./${p_seg_ref_base}_${short_run_type}.nii.gz"
+  p_fn_seg_ref_merged="./${p_seg_ref_base}_merged_${short_run_type}.nii.gz"
+
+  python3 ../../util/merge_root_labels.py $p_fn_seg_ref "1,2,4" 4 $p_fn_seg_ref_merged > /dev/null
+
+
+  # STEP 2: CREATE LABEL MESH -------------------------------------------------
   echo "-- Creating Label Mesh ..."
-  $ENV_LABEL_MODEL_GEN_PATH $p_fn_seg_ref $p_fn_mesh_bnd > /dev/null
+  $ENV_LABEL_MODEL_GEN_PATH $p_fn_seg_ref_merged $p_fn_mesh_ref > /dev/null
 
-  
+
+  # STEP 3: CREATE MEDIAL MESH -------------------------------------------------
+  echo "-- Creating Medial Mesh ..."
+
+  p_fn_mesh_bnd="$out_dir/segref_bnd.vtk"
+  p_fn_mesh_med="$out_dir/segref_med.vtk"
+
+  matlab -batch "$ENV_STRAIN_PATH/medial_mesh('$p_fn_mesh_ref', '$p_fn_mesh_bnd','$p_fn_mesh_med')"
+
+
+
 
 
 done
