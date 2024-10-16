@@ -99,7 +99,7 @@ for run_type in "${run_types[@]}"; do
   p_fn_mesh_bnd="$out_dir/segref_bnd.vtk"
   p_fn_mesh_med="$out_dir/segref_med.vtk"
 
-  matlab -batch "$ENV_STRAIN_PATH/medial_mesh('$p_fn_mesh_ref', '$p_fn_mesh_bnd','$p_fn_mesh_med')"
+  matlab -batch "addpath('$ENV_STRAIN_PATH'); medial_mesh('$p_fn_mesh_ref', '$p_fn_mesh_bnd','$p_fn_mesh_med')"
 
 
 
