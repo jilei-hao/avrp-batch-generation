@@ -66,6 +66,6 @@ do
   echo "Study directory: $v_dir_study"
   cd $v_dir_study
 
-  # execute run_strain.sh and redirect output to the log file
-  time bash ./run_strain.sh > run_strain.log 2>&1
+  # put generic command here
+  rm srs_m.nii.gz
 done

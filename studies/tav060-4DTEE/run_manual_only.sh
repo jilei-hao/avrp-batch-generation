@@ -59,7 +59,7 @@ echo
 
 # output directories
 out_root="./output/strain"
-run_types=("auto" "manual")
+run_types=("manual")
 
 # for each run_type, run following steps
 for run_type in "${run_types[@]}"; do
@@ -103,7 +103,7 @@ for run_type in "${run_types[@]}"; do
   p_fn_mesh_bnd="$out_dir/segref_bnd.vtk"
   p_fn_mesh_med="$out_dir/segref_med.vtk"
 
-  matlab -batch "addpath('$ENV_STRAIN_PATH'); medial_mesh_generic('$p_fn_mesh_ref', '$p_fn_mesh_med','$p_fn_mesh_bnd', '1', '2', '4')"
+  matlab -batch "addpath('$ENV_STRAIN_PATH'); addpath('$ENV_STRAIN_SCRIPT_PATH'); medial_mesh_generic('$p_fn_mesh_ref', '$p_fn_mesh_med','$p_fn_mesh_bnd', '1', '2', '4')"
 
   # STEP 4: RUN PROPAGATION ----------------------------------------------------
   echo "-- Running Propagation ..."
