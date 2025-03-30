@@ -330,7 +330,7 @@ const uploadCoaptationSurface = async () => {
       const filePath = path.join(outputFolder, file);
 
       console.log(`-- Uploading file: ${filePath}`);
-      const fileId = await uploadToDS(filePath, `${cn}/${sn}/coaptation_surface`);
+      const fileId = await uploadToDS(filePath, `${cn}/${sn}/coaptation-surface`);
       console.log(`---- File ID: ${fileId}`);
 
       // extract morph code (LN, NR, LR) from the filename (e.g. coaptation_surface_NR_tp01.vtp)
@@ -367,7 +367,7 @@ const uploadGlobalMeasurements = async () => {
   const files = fs.readdirSync(outputFolder);
 
   // look for _global_measurements.json
-  const file = files.find(file => file.includes('_global_measurements.json'));
+  const file = files.find(file => file.includes('hdl_gm_values'));
 
   if (!file || file.length === 0) {
     console.log(`-- No global measurements file found`);
@@ -377,17 +377,67 @@ const uploadGlobalMeasurements = async () => {
   const filePath = path.join(outputFolder, file);
 
   console.log(`-- Uploading file: ${filePath}`);
-  const fileId = await uploadToDS(filePath, `${cn}/${sn}/global_measurements`);
+  const fileId = await uploadToDS(filePath, `${cn}/${sn}/global-measurements`);
   console.log(`---- File ID: ${fileId}`);
+
+
+  // extract tp from the filename (e.g. coaptation_surface_NR_tp01.vtp)
+  const tpStr = file.match(/tp\d+/)[0];
+  const tp = parseInt(tpStr.match(/\d+/)[0]);
+  console.log(`---- Timepoint: ${tp}`);
 
   headers.push({
     "data_group_name": "global-measurements",
-    "time_point": -1,
+    "time_point": tp,
     "primary_index": null,
     "secondary_index": null,
     "data_server_id": fileId
   });
 
+  return headers;
+}
+
+const uploadGlobalMeasurementsModels = async () => {
+  let headers = [];
+
+  // iterate over the output folder in the data directory
+  const files = fs.readdirSync(outputFolder);
+
+  // for each file with coaptation_surface*.vtp, process the upload
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    if (file.includes('hdl_gm') && !file.includes('hdl_gm_values')) {
+      const filePath = path.join(outputFolder, file);
+
+      console.log(`-- Uploading file: ${filePath}`);
+      const fileId = await uploadToDS(filePath, `${cn}/${sn}/global_measurements`);
+      console.log(`---- File ID: ${fileId}`);
+
+      // extract data group name from the filename (e.g. cs in "hdl_gm_cs_lb02.vtp")
+      // -- extract between the 2nd and 3rd underscore
+      const dataGroupName = `global-measurements_${file.split('_')[2]}`;
+      console.log(`---- Data group name: ${dataGroupName}`);
+
+      // extract label from the filename (e.g. hdl_gm_cs_lb02.vtp)
+      const lbStr = file.match(/lb\d+/)[0];
+      const lb = parseInt(lbStr.match(/\d+/)[0]);
+      console.log(`---- Label: ${lb}`);
+
+      // extract tp from the filename (e.g. coaptation_surface_NR_tp01.vtp)
+      const tpStr = file.match(/tp\d+/)[0];
+      const tp = parseInt(tpStr.match(/\d+/)[0]);
+      console.log(`---- Timepoint: ${tp}`);
+
+      headers.push({
+        "data_group_name": dataGroupName,
+        "time_point": tp,
+        "primary_index": lb,
+        "secondary_index": null,
+        "data_server_id": fileId
+      })
+    }
+  }
+    
   return headers;
 }
 
@@ -468,6 +518,9 @@ async function importStudy() {
 
   const medialRootStrainHeaders = await uploadMedialRootStrain();
   // console.log(`-- Medial Root Strain headers: `, medialRootStrainHeaders);
+
+  const globalMeasurementsModelHeaders = await uploadGlobalMeasurementsModels();
+  console.log(`-- Global Measurements Model headers: `, globalMeasurementsModelHeaders);
 
   // assemble all the headers
   const headers = modelSLHeaders.concat(modelMLHeaders)

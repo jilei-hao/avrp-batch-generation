@@ -34,7 +34,10 @@ exec > $ENV_PROJECT_ROOT/logs/run_batch_import.log 2>&1
 #   "$study_root/bav44/pre-op-TEE")
 
 ## active studies
-studies_dirs=("$ENV_STUDY_ROOT/bavcta005/scan2")
+studies_dirs=( \
+  "$ENV_STUDY_ROOT/bavcta005/scan2" \
+  "$ENV_STUDY_ROOT/bavcta010/baseline" \
+)
 
 echo "Start batch importing studies"
 
