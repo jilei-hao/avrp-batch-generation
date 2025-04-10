@@ -8,6 +8,9 @@ const args = process.argv.slice(2);
 
 // Data group names
 const DGN_MEDIAL_ROOT_STRAIN = 'medial-root-strain'
+const DGN_GLOBAL_MEASUREMENTS = 'global-measurements'
+const DGN_COAPTATION_SURFACE = 'coaptation-surface'
+
 
 // Function to parse command line arguments
 function parseArguments(args) {
@@ -330,7 +333,7 @@ const uploadCoaptationSurface = async () => {
       const filePath = path.join(outputFolder, file);
 
       console.log(`-- Uploading file: ${filePath}`);
-      const fileId = await uploadToDS(filePath, `${cn}/${sn}/coaptation-surface`);
+      const fileId = await uploadToDS(filePath, `${cn}/${sn}/${DGN_COAPTATION_SURFACE}`);
       console.log(`---- File ID: ${fileId}`);
 
       // extract morph code (LN, NR, LR) from the filename (e.g. coaptation_surface_NR_tp01.vtp)
@@ -348,7 +351,7 @@ const uploadCoaptationSurface = async () => {
       console.log(`---- Timepoint: ${tp}`);
 
       headers.push({
-        "data_group_name": "coaptation-surface",
+        "data_group_name": DGN_COAPTATION_SURFACE,
         "time_point": tp,
         "primary_index": morphCodeId,
         "secondary_index": null,
@@ -377,18 +380,18 @@ const uploadGlobalMeasurements = async () => {
   const filePath = path.join(outputFolder, file);
 
   console.log(`-- Uploading file: ${filePath}`);
-  const fileId = await uploadToDS(filePath, `${cn}/${sn}/global-measurements`);
+  const fileId = await uploadToDS(filePath, `${cn}/${sn}/${DGN_GLOBAL_MEASUREMENTS}`);
   console.log(`---- File ID: ${fileId}`);
 
 
   // extract tp from the filename (e.g. coaptation_surface_NR_tp01.vtp)
-  const tpStr = file.match(/tp\d+/)[0];
-  const tp = parseInt(tpStr.match(/\d+/)[0]);
-  console.log(`---- Timepoint: ${tp}`);
+  // const tpStr = file.match(/tp\d+/)[0];
+  // const tp = parseInt(tpStr.match(/\d+/)[0]);
+  // console.log(`---- Timepoint: ${tp}`);
 
   headers.push({
-    "data_group_name": "global-measurements",
-    "time_point": tp,
+    "data_group_name": DGN_GLOBAL_MEASUREMENTS,
+    "time_point": -1,
     "primary_index": null,
     "secondary_index": null,
     "data_server_id": fileId
@@ -410,12 +413,12 @@ const uploadGlobalMeasurementsModels = async () => {
       const filePath = path.join(outputFolder, file);
 
       console.log(`-- Uploading file: ${filePath}`);
-      const fileId = await uploadToDS(filePath, `${cn}/${sn}/global_measurements`);
+      const fileId = await uploadToDS(filePath, `${cn}/${sn}/${DGN_GLOBAL_MEASUREMENTS}`);
       console.log(`---- File ID: ${fileId}`);
 
       // extract data group name from the filename (e.g. cs in "hdl_gm_cs_lb02.vtp")
       // -- extract between the 2nd and 3rd underscore
-      const dataGroupName = `global-measurements_${file.split('_')[2]}`;
+      const dataGroupName = `${DGN_GLOBAL_MEASUREMENTS}_${file.split('_')[2]}`;
       console.log(`---- Data group name: ${dataGroupName}`);
 
       // extract label from the filename (e.g. hdl_gm_cs_lb02.vtp)
@@ -520,7 +523,7 @@ async function importStudy() {
   // console.log(`-- Medial Root Strain headers: `, medialRootStrainHeaders);
 
   const globalMeasurementsModelHeaders = await uploadGlobalMeasurementsModels();
-  console.log(`-- Global Measurements Model headers: `, globalMeasurementsModelHeaders);
+  // console.log(`-- Global Measurements Model headers: `, globalMeasurementsModelHeaders);
 
   // assemble all the headers
   const headers = modelSLHeaders.concat(modelMLHeaders)
@@ -528,7 +531,8 @@ async function importStudy() {
                                 .concat(segmentationHeaders)
                                 .concat(coaptationSurfaceHeaders)
                                 .concat(globalMeasurementsHeaders)
-                                .concat(medialRootStrainHeaders);
+                                .concat(medialRootStrainHeaders)
+                                .concat(globalMeasurementsModelHeaders);
 
   const res = await createData(token, sid, headers);
   console.log(`-- Data posted: `, res);

@@ -14,7 +14,7 @@ export PYTHONPATH=$DIR
 
 
 # execute
-python3 $gm --fusionType "NONE" \
+python3 $gm --fusionType "LR" \
 --outputDir $data_dir \
 --labelModels \
 "$data_dir/mesh_lb01_tp01.vtp" \
