@@ -1,9 +1,10 @@
+#! /bin/bash
 
 # generic environment settings
 ENV_STUDY_ROOT=/home/jileihao/dev/spt-dev/avrp-batch-generation/studies
 
 # study generator
-ENV_STUDYGEN_PATH=/home/jileihao/dev/spt-dev/AVRSPT-StudyGen/build/StudyGen
+ENV_STUDY_GEN_PATH=/home/jileihao/dev/spt-dev/AVRSPT-StudyGen/build/StudyGen
 
 
 # location of the root directory of the GoValve project
