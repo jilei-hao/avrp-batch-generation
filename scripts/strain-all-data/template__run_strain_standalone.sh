@@ -12,12 +12,10 @@ echo
 echo "## Strain Pipeline Started"
 echo
 echo "Environment Variables:"
-echo "-- ENV_RUN_PROPAGATION_PTH:      $ENV_RUN_PROPAGATION_PATH"
-echo "-- ENV_STRAIN_PATH:              $ENV_STRAIN_PATH"
-echo "-- CONFIG_TPR_SYS:               $CONFIG_TPR_SYS"
-echo "-- CONFIG_TPT_SYS:               $CONFIG_TPT_SYS"
-echo "-- CONFIG_TPR_DIAS:              $CONFIG_TPR_DIAS"
-echo "-- CONFIG_TPT_DIAS:              $CONFIG_TPT_DIAS"
+echo "-- ENV_RUN_PROPAGATION_PTH:       $ENV_RUN_PROPAGATION_PATH"
+echo "-- ENV_STRAIN_PATH:               $ENV_STRAIN_PATH"
+echo "-- CONFIG_TPR:                    $CONFIG_TPR"
+echo "-- CONFIG_TPT:                    $CONFIG_TPT"
 echo
 
 # 1 or 0
@@ -163,8 +161,17 @@ for run_type in "${run_types[@]}"; do
   # STEP 6: Run Strain Analysis -----------------------------------------------
   echo "-- Running Strain Analysis ..."
   v_current_dir=$(pwd)
+
+  
   cd $ENV_STRAIN_PATH
-  python3 $ENV_STRAIN_SCRIPT_PATH/compute_strain.py $p_strain_out_dir $p_frame_time_in_ms $p_tp_open $p_tp_close
+  # if p_tp_open equals to p_tp_start, call strain with tp_open = tp_start + 1 tp_ref = tp_open
+  if [ $p_tp_open -eq $p_tp_start ]; then
+    v_new_tp_open=$((p_tp_open + 1))
+    python3 $ENV_STRAIN_SCRIPT_PATH/compute_strain.py $p_strain_out_dir $p_frame_time_in_ms $v_new_tp_open $p_tp_close $p_tp_open
+  else
+    python3 $ENV_STRAIN_SCRIPT_PATH/compute_strain.py $p_strain_out_dir $p_frame_time_in_ms $p_tp_open $p_tp_close
+  fi
+  
   cd $v_current_dir
 
 done
