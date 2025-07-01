@@ -5,21 +5,24 @@
 ####################################################################################################
 
 # include global and local configs
-source ../../configs/env.sh
+source ../../env.sh
 source ./config.sh
 
 echo
 echo "## Strain Pipeline Started"
 echo
 echo "Environment Variables:"
-echo "-- ENV_RUN_PROPAGATION_PTH:       $ENV_RUN_PROPAGATION_PATH"
-echo "-- ENV_STRAIN_PATH:               $ENV_STRAIN_PATH"
-echo "-- CONFIG_TPR:                    $CONFIG_TPR"
-echo "-- CONFIG_TPT:                    $CONFIG_TPT"
-echo "-- CONFIG_TP_START:               $CONFIG_TP_START"
-echo "-- CONFIG_TP_END:                 $CONFIG_TP_END"
-echo "-- CONFIG_TP_OPEN:                $CONFIG_TP_OPEN"
-echo "-- CONFIG_TP_CLOSE:               $CONFIG_TP_CLOSE"
+echo "-- ENV_BATCH_GENERATION_PROJECT_ROOT: $ENV_BATCH_GENERATION_PROJECT_ROOT"
+echo "-- ENV_RUN_PROPAGATION_PTH:           $ENV_RUN_PROPAGATION_PATH"
+echo "-- ENV_STRAIN_PATH:                   $ENV_STRAIN_PATH"
+echo "-- ENV_STRAIN_SCRIPT_PATH:            $ENV_STRAIN_SCRIPT_PATH"
+echo "-- ENV_STRAIN_CLASSIC_PATH:           $ENV_STRAIN_CLASSIC_PATH"
+echo "-- CONFIG_TPR:                        $CONFIG_TPR"
+echo "-- CONFIG_TPT:                        $CONFIG_TPT"
+echo "-- CONFIG_TP_START:                   $CONFIG_TP_START"
+echo "-- CONFIG_TP_END:                     $CONFIG_TP_END"
+echo "-- CONFIG_TP_OPEN:                    $CONFIG_TP_OPEN"
+echo "-- CONFIG_TP_CLOSE:                   $CONFIG_TP_CLOSE"
 echo
 
 # 1 or 0
@@ -79,7 +82,7 @@ p_strain_p_dir_out=$(realpath $p_medial_recon_p_dir_out)
 
   echo
   echo "--------------------------------------------------"
-  echo "Running: $run_type "
+  echo "Running: "
   echo "--------------------------------------------------"
   echo
 
@@ -96,12 +99,12 @@ p_strain_p_dir_out=$(realpath $p_medial_recon_p_dir_out)
 
     # STEP 1: MERGE ROOT LABELS --------------------------------------------------
     echo "-- Remove Lumen ..."
-    python3 ../../util/remove_lumen.py $p_fn_seg_ref $p_fn_seg_ref_wo_lumen 3 > /dev/null
+    python3 $ENV_BATCH_GENERATION_PROJECT_ROOT/util/remove_lumen.py $p_fn_seg_ref $p_fn_seg_ref_wo_lumen 3 > /dev/null
 
 
     # STEP 2: CREATE LABEL MESH --------------------------------------------------
     echo "-- Creating Label Mesh ..."
-    $ENV_LABEL_MODEL_GEN_PATH $p_fn_seg_ref_wo_lumen $p_fn_mesh_ref > /dev/null
+    $ENV_LABEL_MODEL_GEN_PATH "1,2,4" $p_fn_seg_ref_wo_lumen $p_fn_mesh_ref > /dev/null
 
 
     # STEP 3: CREATE MEDIAL MESH -------------------------------------------------
@@ -157,9 +160,9 @@ p_strain_p_dir_out=$(realpath $p_medial_recon_p_dir_out)
   # if p_tp_open equals to p_tp_start, call strain with tp_open = tp_start + 1 tp_ref = tp_open
   if [ $p_tp_open -eq $p_tp_start ]; then
     v_new_tp_open=$((p_tp_open + 1))
-    python3 $ENV_STRAIN_SCRIPT_PATH/compute_strain.py $p_strain_p_dir_out $p_frame_time_in_ms $v_new_tp_open $p_tp_close $p_tp_open
+    python3 $ENV_STRAIN_CLASSIC_PATH $p_strain_p_dir_out $p_frame_time_in_ms $v_new_tp_open $p_tp_close $p_tp_open
   else
-    python3 $ENV_STRAIN_SCRIPT_PATH/compute_strain.py $p_strain_p_dir_out $p_frame_time_in_ms $p_tp_open $p_tp_close
+    python3 $ENV_STRAIN_CLASSIC_PATH $p_strain_p_dir_out $p_frame_time_in_ms $p_tp_open $p_tp_close
   fi
   
   cd $v_current_dir
