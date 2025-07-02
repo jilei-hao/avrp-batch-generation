@@ -5,19 +5,24 @@
 ####################################################################################################
 
 # include global and local configs
-source ../../configs/env.sh
+source ../../env.sh
 source ./config.sh
 
 echo
 echo "## Strain Pipeline Started"
 echo
 echo "Environment Variables:"
-echo "-- ENV_RUN_PROPAGATION_PTH:      $ENV_RUN_PROPAGATION_PATH"
-echo "-- ENV_STRAIN_PATH:              $ENV_STRAIN_PATH"
-echo "-- CONFIG_TPR_SYS:               $CONFIG_TPR_SYS"
-echo "-- CONFIG_TPT_SYS:               $CONFIG_TPT_SYS"
-echo "-- CONFIG_TPR_DIAS:              $CONFIG_TPR_DIAS"
-echo "-- CONFIG_TPT_DIAS:              $CONFIG_TPT_DIAS"
+echo "-- ENV_BATCH_GENERATION_PROJECT_ROOT: $ENV_BATCH_GENERATION_PROJECT_ROOT"
+echo "-- ENV_RUN_PROPAGATION_PTH:           $ENV_RUN_PROPAGATION_PATH"
+echo "-- ENV_STRAIN_PATH:                   $ENV_STRAIN_PATH"
+echo "-- ENV_STRAIN_SCRIPT_PATH:            $ENV_STRAIN_SCRIPT_PATH"
+echo "-- ENV_STRAIN_CLASSIC_PATH:           $ENV_STRAIN_CLASSIC_PATH"
+echo "-- CONFIG_TPR:                        $CONFIG_TPR"
+echo "-- CONFIG_TPT:                        $CONFIG_TPT"
+echo "-- CONFIG_TP_START:                   $CONFIG_TP_START"
+echo "-- CONFIG_TP_END:                     $CONFIG_TP_END"
+echo "-- CONFIG_TP_OPEN:                    $CONFIG_TP_OPEN"
+echo "-- CONFIG_TP_CLOSE:                   $CONFIG_TP_CLOSE"
 echo
 
 # 1 or 0
@@ -33,26 +38,16 @@ echo
 
 # parameters for the script
 p_frame_time_in_ms=50
+p_seg_ref_base="sr"
+p_tpr=${CONFIG_TPR:-}
+p_full_target_tps=${CONFIG_TPT:-}
+p_tp_start=${CONFIG_TP_START:-}
+p_tp_end=${CONFIG_TP_END:-}
+p_tp_open=${CONFIG_TP_OPEN:-}
+p_tp_close=${CONFIG_TP_CLOSE:-}
 
-if [ -n "$CONFIG_TPR_SYS" ]; then
-  p_seg_ref_base="srs"
-  p_tpr=$CONFIG_TPR_SYS
-elif [ -n "$CONFIG_TPR_DIAS" ]; then
-  p_seg_ref_base="srd"
-  p_tpr=$CONFIG_TPR_DIAS
-else
-  echo "Error: Missing reference TP. Both CONFIG_TPR_SYS and CONFIG_TPR_DIAS are empty."
-  exit 1
-fi
 
-# Use parameter expansion to provide default empty string if variables are unset
-p_full_target_tps=$(python3 ../../util/get_full_target_tps.py "${CONFIG_TPT_SYS:-}" "${CONFIG_TPT_DIAS:-}")
-p_tp_start=$(echo $p_full_target_tps | cut -d',' -f1)
-p_tp_end=$(echo $p_full_target_tps | awk -F',' '{print $NF}')
-
-read p_tp_open p_tp_close <<< \
-  $(python3 "../../util/get_open_close_tps.py" "${CONFIG_TPR_SYS:-}" "${CONFIG_TPT_SYS:-}" "${CONFIG_TPR_DIAS:-}" "${CONFIG_TPT_DIAS:-}")
-
+# check if all parameters are set
 echo
 echo "Parameters:";
 echo "-- Segmentation Reference Base:  $p_seg_ref_base"
@@ -66,54 +61,50 @@ echo
 
 
 # output directories
-out_root="./output/strain"
-run_types=("auto" "manual")
+p_dir_out="./output/strain"
 matlab_path_string="addpath('$ENV_STRAIN_PATH'); addpath('$ENV_STRAIN_SCRIPT_PATH');"
 
-# for each run_type, run following steps
-for run_type in "${run_types[@]}"; do
-  # defining all file names here
-  out_dir="$out_root/$run_type"
-  short_run_type=${run_type:0:1} # a for auto, m for manual, etc.
-  p_fn_mesh_ref="$out_dir/mesh_ref.vtk"
-  p_fn_seg_ref="./${p_seg_ref_base}_${short_run_type}.nii.gz"
-  p_fn_seg_ref_wo_lumen="$out_dir/${p_seg_ref_base}_wo_lumen_${short_run_type}.nii.gz"
-  p_fn_mesh_bnd="$out_dir/segref_bnd.vtk"
-  p_fn_mesh_med="$out_dir/segref_med.vtk"
-  v_propa_out_dir="$out_dir/propagation"
-  p_medial_recon_out_dir="$out_dir/medial_recon_and_strain"
-  v_mesh_bnd_pattern='mesh_bnd_tp'
-  v_mesh_med_recon_pattern='mesh_med_recon_tp'
-  v_ref_tp_string=$(printf "%03d" $p_tpr)
-  v_path_medial_recon_ref=$p_medial_recon_out_dir/${v_mesh_med_recon_pattern}_${v_ref_tp_string}.vtk
-  p_strain_out_dir=$(realpath $p_medial_recon_out_dir)
+
+# defining all file names here
+p_fn_mesh_ref="$p_dir_out/mesh_ref.vtk"
+p_fn_seg_ref="./${p_seg_ref_base}.nii.gz"
+p_fn_seg_ref_wo_lumen="$p_dir_out/${p_seg_ref_base}_no_lumen.nii.gz"
+p_fn_mesh_bnd="$p_dir_out/segref_bnd.vtk"
+p_fn_mesh_med="$p_dir_out/segref_med.vtk"
+v_propa_p_dir_out="$p_dir_out/propagation"
+p_medial_recon_p_dir_out="$p_dir_out/medial_recon_and_strain"
+v_mesh_bnd_pattern='mesh_bnd_tp'
+v_mesh_med_recon_pattern='mesh_med_recon_tp'
+v_ref_tp_string=$(printf "%03d" $p_tpr)
+v_path_medial_recon_ref=$p_medial_recon_p_dir_out/${v_mesh_med_recon_pattern}_${v_ref_tp_string}.vtk
+p_strain_p_dir_out=$(realpath $p_medial_recon_p_dir_out)
 
 
   echo
   echo "--------------------------------------------------"
-  echo "Running: $run_type "
+  echo "Running: "
   echo "--------------------------------------------------"
   echo
 
   if [ $p_use_existing_propagation -eq 0 ]; then
     # if out_auto and out_manual exist, archive them by appending YYMMDD-HHMMSS to the folder name
-    if [ -d $out_dir ]; then
+    if [ -d $p_dir_out ]; then
       # get existing folder creation data time
-      creation_time=$(stat -c %y $out_dir)
+      creation_time=$(stat -c %y $p_dir_out)
       creation_time=${creation_time:0:16}
-      mv $out_dir $out_dir-$(date +"%y%m%d-%H%M%S" -d "$creation_time")
+      mv $p_dir_out $p_dir_out-$(date +"%y%m%d-%H%M%S" -d "$creation_time")
     fi
 
-    mkdir -p $out_dir
+    mkdir -p $p_dir_out
 
     # STEP 1: MERGE ROOT LABELS --------------------------------------------------
     echo "-- Remove Lumen ..."
-    python3 ../../util/remove_lumen.py $p_fn_seg_ref $p_fn_seg_ref_wo_lumen 3 > /dev/null
+    python3 $ENV_BATCH_GENERATION_PROJECT_ROOT/util/remove_lumen.py $p_fn_seg_ref $p_fn_seg_ref_wo_lumen 3 > /dev/null
 
 
     # STEP 2: CREATE LABEL MESH --------------------------------------------------
     echo "-- Creating Label Mesh ..."
-    $ENV_LABEL_MODEL_GEN_PATH $p_fn_seg_ref_wo_lumen $p_fn_mesh_ref > /dev/null
+    $ENV_LABEL_MODEL_GEN_PATH "1,2,4" $p_fn_seg_ref_wo_lumen $p_fn_mesh_ref > /dev/null
 
 
     # STEP 3: CREATE MEDIAL MESH -------------------------------------------------
@@ -123,7 +114,7 @@ for run_type in "${run_types[@]}"; do
     # STEP 4: RUN PROPAGATION ----------------------------------------------------
     echo "-- Running Propagation ..."
     
-    mkdir -p $v_propa_out_dir
+    mkdir -p $v_propa_p_dir_out
     $ENV_RUN_PROPAGATION_PATH \
       -i i4.nii.gz \
       -s $p_fn_seg_ref_wo_lumen \
@@ -131,12 +122,12 @@ for run_type in "${run_types[@]}"; do
       -tpt $p_full_target_tps \
       -em "bnd" "$p_fn_mesh_bnd" \
       -em "med" "$p_fn_mesh_med" \
-      -o $v_propa_out_dir
+      -o $v_propa_p_dir_out
   else
     # if output directory does not exist, exit
-    if [ ! -d $v_propa_out_dir ]; then
+    if [ ! -d $v_propa_p_dir_out ]; then
       echo
-      echo "Error: Output directory does not exist: $v_propa_out_dir! Cannot use existing propagation. Exiting ..."
+      echo "Error: Output directory does not exist: $v_propa_p_dir_out! Cannot use existing propagation. Exiting ..."
       echo
       exit 1
     fi
@@ -146,13 +137,13 @@ for run_type in "${run_types[@]}"; do
 
   # STEP 5: CREATE MEDIAL MESH FROM BOUNDARY MESH -----------------------------
   echo "-- Creating Medial Mesh from Boundary Mesh ..."
-  mkdir -p $p_medial_recon_out_dir
+  mkdir -p $p_medial_recon_p_dir_out
 
   # copy the boundary mesh to the medial recon folder
-  cp $v_propa_out_dir/${v_mesh_bnd_pattern}*.vtk $p_medial_recon_out_dir
+  cp $v_propa_p_dir_out/${v_mesh_bnd_pattern}*.vtk $p_medial_recon_p_dir_out
 
   matlab -batch "$matlab_path_string \
-    medial_recon_from_bnd_generic('$p_medial_recon_out_dir', '$v_mesh_bnd_pattern','$v_mesh_med_recon_pattern', \
+    medial_recon_from_bnd_generic('$p_medial_recon_p_dir_out', '$v_mesh_bnd_pattern','$v_mesh_med_recon_pattern', \
     '$p_fn_mesh_bnd', '$p_fn_mesh_med', '$p_tpr', '$p_tp_start', '$p_tp_end')"
 
   # if the reference medial mesh does not exist, copy reference medial mesh to the medial recon folder 
@@ -163,8 +154,17 @@ for run_type in "${run_types[@]}"; do
   # STEP 6: Run Strain Analysis -----------------------------------------------
   echo "-- Running Strain Analysis ..."
   v_current_dir=$(pwd)
+
+  
   cd $ENV_STRAIN_PATH
-  python3 $ENV_STRAIN_SCRIPT_PATH/compute_strain.py $p_strain_out_dir $p_frame_time_in_ms $p_tp_open $p_tp_close
+  # if p_tp_open equals to p_tp_start, call strain with tp_open = tp_start + 1 tp_ref = tp_open
+  if [ $p_tp_open -eq $p_tp_start ]; then
+    v_new_tp_open=$((p_tp_open + 1))
+    python3 $ENV_STRAIN_CLASSIC_PATH $p_strain_p_dir_out $p_frame_time_in_ms $v_new_tp_open $p_tp_close $p_tp_open
+  else
+    python3 $ENV_STRAIN_CLASSIC_PATH $p_strain_p_dir_out $p_frame_time_in_ms $p_tp_open $p_tp_close
+  fi
+  
   cd $v_current_dir
 
 done
